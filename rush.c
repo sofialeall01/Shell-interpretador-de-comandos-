@@ -1,3 +1,13 @@
+/* TRABALHO SISTEMAS OPERACIONAIS 
+Kaua Teixeira Nascimento
+Sofia Maria
+*/
+
+/* CODIGOS:
+    make # executa o Makefile e cria um executavel
+    ./rush # roda o executavel no terminal
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
