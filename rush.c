@@ -1,6 +1,6 @@
 /* TRABALHO SISTEMAS OPERACIONAIS 
 Kaua Teixeira Nascimento
-Sofia Maria
+Sofia Maria de Jesus Leal
 */
 
 /* CODIGOS:
@@ -19,7 +19,15 @@ Sofia Maria
 #define MAX_ARGS 100
 #define MAX_CMDS 20
 
-// Divide string por delimitador
+/*
+Funçao que recebe a linha original de comandos e realiza a quebra em varios tokens de acordo
+com o divisor 
+
+parametros:
+- char *linha: ponteiro para a string original de comandos a ser separa em tokens
+- char *partes[]: vetor de ponteiros onde serão armazenados os endereços dos tokens 
+- char *divisor: ponteiro para string contendo os caracteres que separam os tokens 
+*/
 int separa_tokens(char *linha, char *partes[], char *divisor) {
     int count = 0;
     char *token = strtok(linha, divisor);
@@ -32,13 +40,23 @@ int separa_tokens(char *linha, char *partes[], char *divisor) {
     return count;
 }
 
-// Parse argumentos + redirecionamento
-void separar_comandos(char *cmd, char **args, char **input, char **output) {
+/*
+Funçao que analisa e interpreta m comando digitado pelo usuário,
+separando o nome do programa, seus argumentos e os
+possíveis redirecionamentos de entrada ('<') e saída ('>').
+
+parametros:
+- char *comando: ponteiro para a string contendo um comando individual de pipeline
+- char **args[]: vetor de ponteiros preechido pelos tokens da linha de comando
+- char **input: ponteiro para ponteiro que guarda o nome do arquivo de entrada
+- char **output: ponteiro para ponteiro que guarda o nome do arquivo de saida
+*/
+void separar_comandos(char *comando, char **args, char **input, char **output) {
     *input = NULL;
     *output = NULL;
 
     char *tokens[MAX_ARGS];
-    int n = separa_tokens(cmd, tokens, " \t\n");
+    int n = separa_tokens(comando, tokens, " \t\n");
 
     int j = 0;
     for (int i = 0; i < n; i++) {
@@ -55,7 +73,11 @@ void separar_comandos(char *cmd, char **args, char **input, char **output) {
     args[j] = NULL;
 }
 
-// Executa pipeline completo
+/*
+Função responsavel por executar uma linha de comandos digitada pelo usuário 
+parametros:
+- char *linha: ponteiro para a string contendo a linha de comando completa digitada pelo usuário    
+*/
 void execute_pipeline(char *linha) {
     char *cmds[MAX_CMDS];
 
