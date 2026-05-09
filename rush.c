@@ -41,7 +41,7 @@ int separa_tokens(char *linha, char *partes[], char *divisor) {
 }
 
 /*
-Funçao que analisa e interpreta m comando digitado pelo usuário,
+Funçao que analisa e interpreta um comando digitado pelo usuário,
 separando o nome do programa, seus argumentos e os
 possíveis redirecionamentos de entrada ('<') e saída ('>').
 
