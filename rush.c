@@ -170,7 +170,7 @@ int main() {
     char linha[MAX_LINHA];
 
     while (1) {
-        printf("Digite comando: ");
+        printf("Digite o comando: ");
         fflush(stdout);
 
         if (fgets(linha, MAX_LINHA, stdin) == NULL)
