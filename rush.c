@@ -1,6 +1,6 @@
 /* TRABALHO SISTEMAS OPERACIONAIS 
-Kaua Teixeira Nascimento
-Sofia Maria de Jesus Leal
+    Kaua Teixeira Nascimento
+    Sofia Maria de Jesus Leal
 */
 
 /* CODIGOS:
