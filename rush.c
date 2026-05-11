@@ -1,12 +1,10 @@
-/* TRABALHO SISTEMAS OPERACIONAIS 
-    Kaua Teixeira Nascimento
-    Sofia Maria de Jesus Leal
-*/
+/* trabalho pratico sistemas operacionais 
+ * kaua teixeira nascimento e sofia maria de jesus leal
+ */
 
-/* CODIGOS:
-    make # executa o Makefile e cria um executavel
-    ./rush # roda o executavel no terminal
-*/
+// comandos pra testar:
+// make
+// ./rush
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,176 +13,179 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 
+// limitadores do projeto
 #define MAX_LINHA 1024
 #define MAX_ARGS 100
 #define MAX_CMDS 20
 
 /*
-Funçao que recebe a linha original de comandos e realiza a quebra em varios tokens de acordo
+funçao que recebe a linha original de comandos e realiza a quebra em varios pedacinhos de acordo
 com o divisor 
-
-parametros:
-- char *linha: ponteiro para a string original de comandos a ser separa em tokens
-- char *partes[]: vetor de ponteiros onde serão armazenados os endereços dos tokens 
-- char *divisor: ponteiro para string contendo os caracteres que separam os tokens 
 */
-int separa_tokens(char *linha, char *partes[], char *divisor) {
-    int count = 0;
-    char *token = strtok(linha, divisor);
+int cortar_linha(char *linha, char *partes[], char *divisores) {
+    int qtd = 0;
+    char *pedacinho = strtok(linha, divisores);
 
-    while (token != NULL) {
-        partes[count++] = token;
-        token = strtok(NULL, divisor);
+    while (pedacinho != NULL) {
+        partes[qtd] = pedacinho;
+        qtd++;
+        pedacinho = strtok(NULL, divisores);
     }
-    partes[count] = NULL;
-    return count;
+    partes[qtd] = NULL;
+    return qtd;
 }
 
 /*
-Funçao que analisa e interpreta um comando digitado pelo usuário,
-separando o nome do programa, seus argumentos e os
-possíveis redirecionamentos de entrada ('<') e saída ('>').
-
-parametros:
-- char *comando: ponteiro para a string contendo um comando individual de pipeline
-- char **args[]: vetor de ponteiros preechido pelos tokens da linha de comando
-- char **input: ponteiro para ponteiro que guarda o nome do arquivo de entrada
-- char **output: ponteiro para ponteiro que guarda o nome do arquivo de saida
+funçao que vai interpretar a string que o usuario digitou,,
+separando o nome do programa, seus argumentos e 
+se tem arquivos de entrada ou saida.
 */
-void separar_comandos(char *comando, char **args, char **input, char **output) {
-    *input = NULL;
-    *output = NULL;
+void arruma_argumentos(char *comando_puro, char *argumentos[], char **arq_entrada, char **arq_saida) {
+    *arq_entrada = NULL;
+    *arq_saida = NULL;
 
-    char *tokens[MAX_ARGS];
-    int n = separa_tokens(comando, tokens, " \t\n");
+    char *comandos[MAX_ARGS];
+    int total_comandos = cortar_linha(comando_puro, comandos, " \t\n");
 
-    int j = 0;
-    for (int i = 0; i < n; i++) {
-        if (strcmp(tokens[i], "<") == 0) {
-            *input = tokens[++i];
+    int pos = 0;
+    for (int i = 0; i < total_comandos; i++) {
+        // acha arquivo de entrada
+        if (strcmp(comandos[i], "<") == 0) {
+            i++; 
+            *arq_entrada = comandos[i];
         }
-        else if (strcmp(tokens[i], ">") == 0) {
-            *output = tokens[++i];
+        // acha arquivo de saida
+        else if (strcmp(comandos[i], ">") == 0) {
+            i++;
+            *arq_saida = comandos[i];
         }
+        // se nao for nenhum, salva como argumento pro execvp
         else {
-            args[j++] = tokens[i];
+            argumentos[pos] = comandos[i];
+            pos++;
         }
     }
-    args[j] = NULL;
+    argumentos[pos] = NULL; // ultimo argumento tem q ser nulo
 }
 
-/*
-Função responsavel por executar uma linha de comandos digitada pelo usuário 
-parametros:
-- char *linha: ponteiro para a string contendo a linha de comando completa digitada pelo usuário    
-*/
-void execute_pipeline(char *linha) {
-    char *cmds[MAX_CMDS];
 
-    int n_cmds = separa_tokens(linha, cmds, "|");
+// funçao principal que cria os filhos e interliga eles
+void principal(char *linha_digitada) {
+    char *lista_argumentos[MAX_CMDS];
 
-    int pipe_anterior = -1;
+    // primeiro a gente divide tudo que tem pipe
+    int total_argumentos = cortar_linha(linha_digitada, lista_argumentos, "|");
 
-    for (int i = 0; i < n_cmds; i++) {
-        int fd[2];
-        // o vetor fd[2] armazena os descritores de arquivo de um pipe,
-        //fd[0] ponta de leitura, fd[1] ponta de escrita
+    int pipe_anterior = -1; // guarda a ponta de leitura do pipe anterior
 
-        if (i < n_cmds - 1) {
-            pipe(fd);
+    for (int i = 0; i < total_argumentos; i++) {
+        int pipe_novo[2];
+        // pipe_novo[0] ler, pipe_novo[1] escrever
+
+        // so cria pipe novo se nao for o ultimo comando da fila
+        if (i < total_argumentos - 1) {
+            pipe(pipe_novo);
         }
 
-        pid_t pid = fork();
+        pid_t pid_filho = fork();
 
-        if (pid == 0) {
-            // ===== FILHO =====
+        if (pid_filho == 0) {
+            // == area do processo filho ==
+            // printf("teste: processo filho criado\n");
 
-            char *args[MAX_ARGS];
-            char *input = NULL;
-            char *output = NULL;
+            char *args_comando[MAX_ARGS];
+            char *entrada = NULL;
+            char *saida = NULL;
 
-            separar_comandos(cmds[i], args, &input, &output);
+            arruma_argumentos(lista_argumentos[i], args_comando, &entrada, &saida);
 
-            // Entrada do pipe anterior
+            // puxa os dados do processo anterior
             if (pipe_anterior != -1) {
-                dup2(pipe_anterior, STDIN_FILENO);
-                //STDIN_FILENO: descritor de arquivo de entrada padrão
+                dup2(pipe_anterior, 0); // 0 eh a entrada padrao (stdin)
                 close(pipe_anterior);
             }
 
-            // Saída para próximo pipe
-            if (i < n_cmds - 1) {
-                dup2(fd[1], STDOUT_FILENO);
-                //STDOUT_FILENO: descritor de saida padrão
-                close(fd[0]);
-                close(fd[1]);
+            // joga os dados pro proximo processo
+            if (i < total_argumentos - 1) {
+                dup2(pipe_novo[1], 1); // 1 eh a saida padrao (stdout)
+                close(pipe_novo[0]); 
+                close(pipe_novo[1]);
             }
 
-            // Redirecionamento de entrada <
-            if (input != NULL) {
-                int in_fd = open(input, O_RDONLY);
-                //O_RDONLY: abrir arquivo para leitura
-                if (in_fd < 0) {
-                    perror("Erro ao abrir arquivo de entrada");
+            // ler arquivo do disco (<)
+            if (entrada != NULL) {
+                int fd_in = open(entrada, O_RDONLY);
+                if (fd_in < 0) {
+                    perror("erro ao abrir arquivo pra ler");
                     exit(1);
                 }
-                dup2(in_fd, STDIN_FILENO);
-                close(in_fd);
+                dup2(fd_in, 0);
+                close(fd_in);
             }
 
-            // Redirecionamento de saída >
-            if (output != NULL) {
-                int out_fd = open(output, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-                //O_WRONLY: abrir arquivo para escrita, O_CREAT: criar arquivo, O_TRUNC: apagar conteúdo
-                if (out_fd < 0) {
-                    perror("Erro ao abrir arquivo de saída");
+            // gravar no disco (>)
+            if (saida != NULL) {
+                // abre arquivo, cria se n existir, limpa se existir
+                int fd_out = open(saida, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                if (fd_out < 0) {
+                    perror("erro ao tentar criar arquivo de saida");
                     exit(1);
                 }
-                dup2(out_fd, STDOUT_FILENO);
-                close(out_fd);
+                dup2(fd_out, 1);
+                close(fd_out);
             }
 
-            execvp(args[0], args);
-            perror("Erro no execvp");
+            // faz a substituicao e vira o programa q o usuario digitou
+            execvp(args_comando[0], args_comando);
+            perror("deu erro no comando ou ele nao existe");
             exit(1);
         }
 
-        // ===== PAI =====
+        // == area do processo pai (shell) ==
+        
         if (pipe_anterior != -1) {
-            close(pipe_anterior);
+            close(pipe_anterior); // fecha o pipe antigo q o filho ja usou pra nao travar
         }
 
-        if (i < n_cmds - 1) {
-            close(fd[1]);
-            pipe_anterior = fd[0];
+        if (i < total_argumentos - 1) {
+            close(pipe_novo[1]); // pai nao vai escrever nada
+            pipe_anterior = pipe_novo[0]; // salva o bocal de leitura pro proximo filho usar
         }
     }
 
-    // Espera todos os filhos
-    for (int i = 0; i < n_cmds; i++) {
+    // espera todos os filhos acabarem antes de imprimir o prompt dnv
+    for (int i = 0; i < total_argumentos; i++) {
         wait(NULL);
     }
 }
 
 int main() {
-    char linha[MAX_LINHA];
+    char texto_usuario[MAX_LINHA];
 
+    // loop infinito do shell
     while (1) {
-        printf("Digite o comando: ");
-        fflush(stdout);
+        printf("Digite comando: ");
+        fflush(stdout); // limpa o buffer pra imprimir na hora
 
-        if (fgets(linha, MAX_LINHA, stdin) == NULL)
+        // le do teclado, se o cara apertar ctrl+d sai
+        if (fgets(texto_usuario, MAX_LINHA, stdin) == NULL) {
             break;
+        }
 
-        linha[strcspn(linha, "\n")] = 0;
+        // tira o enter q fica no final da string
+        texto_usuario[strcspn(texto_usuario, "\n")] = 0;
 
-        if (strncmp(linha, "exit", 4) == 0)
+        // condicao de parada do shell
+        if (strncmp(texto_usuario, "exit", 4) == 0) {
             break;
+        }
 
-        if (strlen(linha) == 0)
+        // se a pessoa der enter vazio nao faz nada e repete o loop
+        if (strlen(texto_usuario) == 0) {
             continue;
+        }
 
-        execute_pipeline(linha);
+        principal(texto_usuario);
     }
 
     return 0;
