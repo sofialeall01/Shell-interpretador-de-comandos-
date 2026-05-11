@@ -1,6 +1,7 @@
 /* trabalho pratico sistemas operacionais 
- * kaua teixeira nascimento e sofia maria de jesus leal
- */
+
+kaua teixeira nascimento
+sofia maria de jesus leal */
 
 // comandos pra testar:
 // make
